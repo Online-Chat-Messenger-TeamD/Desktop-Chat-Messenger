@@ -1,5 +1,5 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
-const { spawn } = require('child_process');
+const path = require('path');
 
 let mainWindow;
 
@@ -13,20 +13,12 @@ app.whenReady().then(() => {
     },
   });
 
-  mainWindow.loadFile('index.html');
-});
+  // アプリ起動時に最初のページを表示
+  mainWindow.loadFile(path.join(__dirname, 'index.html'));
 
-// Python スクリプト実行用の IPC ハンドラー
-ipcMain.handle('run-python', async () => {
-  return new Promise((resolve, reject) => {
-    const pythonProcess = spawn('python', ['script.py']);
-
-    pythonProcess.stdout.on('data', (data) => {
-      resolve(JSON.parse(data.toString()));
-    });
-
-    pythonProcess.stderr.on('data', (data) => {
-      reject(data.toString());
-    });
+  // ページ遷移イベントのリスナー
+  ipcMain.on('navigate', (event, page) => {
+    console.log(`Navigating to: ${page}`); // デバッグ用
+    mainWindow.loadFile(path.join(__dirname, page)).catch(err => console.error('Failed to load file:', err));
   });
 });

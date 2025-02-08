@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>ルーム作成</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div class="flex flex-col items-center justify-center h-screen">
+        <h2 class="text-2xl font-bold">新しくルームを作成する</h2>
+        <input type="text" id="room-name" placeholder="ルーム名" class="mt-4 p-2 border rounded">
+        <input type="password" id="password" placeholder="パスワード" class="mt-2 p-2 border rounded">
+        <button id="create-room-button" class="mt-4 p-2 bg-indigo-600 text-white rounded">ルームを作成</button>
+    </div>
+    <script>
+        const { ipcRenderer } = require('electron');
+        document.getElementById('create-room-button').addEventListener('click', () => {
+            ipcRenderer.send('navigate', 'chat-room.html');
+        });
+    </script>
+</body>
+</html>
