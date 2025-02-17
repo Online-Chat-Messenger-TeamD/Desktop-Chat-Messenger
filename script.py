@@ -3,7 +3,6 @@ import sys
 import json
 import datetime
 
-# ✅ `python_log.txt` の保存場所を `/tmp/` ではなくカレントディレクトリに変更
 LOG_FILE = os.path.join(os.path.dirname(__file__), "python_log.txt")
 
 def log_to_file(message):
@@ -12,7 +11,7 @@ def log_to_file(message):
         with open(LOG_FILE, "a", encoding="utf-8") as log_file:
             log_file.write(f"{datetime.datetime.now()} - {message}\n")
             log_file.flush()
-        print(f"📝 ログ出力: {message}", flush=True)  # ✅ 追加: 標準出力にもログ内容を出力
+        print(f"📝 ログ出力: {message}", flush=True)
     except Exception as e:
         print(f"❌ ログ書き込みエラー: {e}", flush=True)
 
@@ -32,6 +31,8 @@ def main():
 
         if operation == 1:
             log_to_file(f"ルーム作成: {room_name} (パスワード: {password})")
+        elif operation == 2:
+            log_to_file(f"ルーム参加: {room_name} (パスワード: {password})")
         else:
             log_to_file("不明な操作です")
 
