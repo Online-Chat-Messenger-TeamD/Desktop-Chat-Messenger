@@ -1,7 +1,6 @@
 const { ipcRenderer } = require('electron');
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("Renderer script loaded"); // デバッグ用
 
     const nextButton = document.getElementById('next-button');
     const createRoomButton = document.getElementById('create-room-button');
@@ -9,7 +8,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (nextButton) {
         nextButton.addEventListener('click', () => {
-            console.log("Next button clicked"); // デバッグ用
             const createRoomOption = document.getElementById('create-room-option').checked;
             const joinRoomOption = document.getElementById('join-room-option').checked;
 
@@ -23,14 +21,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (createRoomButton) {
         createRoomButton.addEventListener('click', () => {
-            console.log("Create Room button clicked"); // デバッグ用
+            const { PythonShell } = require('python-shell');
+            const path = require('path');
+            
+            let options = {
+                scriptPath: path.join(__dirname, ''),
+                pythonPath: 'python3',
+                args: [JSON.stringify({ operation: 1, room_name: "test", password: "1234" })]
+            };
+            
+            console.log("🚀 Python を実行します: ", options);
+            
+            let shell = new PythonShell('script.py', options);
             ipcRenderer.send('navigate', 'chat-room.html');
         });
     }
 
     if (joinRoomButton) {
         joinRoomButton.addEventListener('click', () => {
-            console.log("Join Room button clicked"); // デバッグ用
             ipcRenderer.send('navigate', 'chat-room.html');
         });
     }

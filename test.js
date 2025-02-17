@@ -12,18 +12,18 @@ console.log("🚀 Python を実行します: ", options);
 // ✅ `PythonShell.run()` を修正して標準エラーもキャッチ
 let shell = new PythonShell('script.py', options);
 
-shell.on('message', (message) => {
-    console.log("📩 Python からのメッセージ:", message);
-});
+// shell.on('message', (message) => {
+//     console.log("📩 Python からのメッセージ:", message);
+// });
 
-shell.on('stderr', (stderr) => {
-    console.error("🔥 Python stderr:", stderr);
-});
+// shell.on('stderr', (stderr) => {
+//     console.error("🔥 Python stderr:", stderr);
+// });
 
-shell.on('error', (err) => {
-    console.error("🔥 Python プロセスのエラー:", err);
-});
+// shell.on('error', (err) => {
+//     console.error("🔥 Python プロセスのエラー:", err);
+// });
 
-shell.on('exit', (code) => {
-    console.log(`🔚 Python プロセス終了: コード ${code}`);
-});
+// shell.on('exit', (code) => {
+//     console.log(`🔚 Python プロセス終了: コード ${code}`);
+// });
