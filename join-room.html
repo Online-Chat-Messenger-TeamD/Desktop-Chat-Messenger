@@ -12,11 +12,6 @@
         <input type="password" id="password" placeholder="パスワード" class="mt-2 p-2 border rounded">
         <button id="join-room-button" class="mt-4 p-2 bg-indigo-600 text-white rounded">ルームに参加</button>
     </div>
-    <script>
-        const { ipcRenderer } = require('electron');
-        document.getElementById('join-room-button').addEventListener('click', () => {
-            ipcRenderer.send('navigate', 'chat-room.html');
-        });
-    </script>
+    <script src="renderer.js"></script>
 </body>
 </html>
