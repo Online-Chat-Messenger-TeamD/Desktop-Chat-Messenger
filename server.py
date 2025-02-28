@@ -1,6 +1,6 @@
 import socket
 import threading
-from modules import TCPProtocolHandler,UDPProtocolHandler
+from modules import TCPProtocolHandler,UDPProtocolHandler,CryptoHandler
 import time
 import datetime
 import secrets
@@ -70,16 +70,20 @@ class TCPServer:
       try:
          while True:
             # リクエストの取得
-            request = connection.recv(4096)
+            request = self.recieve_request(connection)
    
             if not request:
-               print(f"{client_address}との接続を終了します。")
+               print(f"{client_address}とのTCP接続を終了します。")
                break
 
             # リクエストの解析
             parsed_request = TCPProtocolHandler.parse_data(request)
             # リクエストのバリデーション。エラーが無ければ空文字が返ってくる
             error_message = self.chat_server.validate_request(parsed_request)
+            if error_message:
+               print(error_message)
+            else:
+               print("バリデーションに成功しました。")
             # バリデートレスポンスの作成
             response = TCPProtocolHandler.make_validate_response(error_message)
             # バリデートレスポンスの送信
@@ -99,27 +103,65 @@ class TCPServer:
                token, error_message = self.chat_server.create_room(parsed_request, client_address)
                # レスポンスの作成
                response = TCPProtocolHandler.make_token_response(token, error_message)
-
+               if error_message:
+                  print(error_message)
+               else:
+                  print("ルームの作成に成功しました。")
             elif operation == 2 and type == "GET":
                # ルーム一覧の作成。成功すれば一覧がリストで返ってくる。
                room_list, error_message = self.chat_server.get_room_list()
                # レスポンスの作成
                response = TCPProtocolHandler.make_room_list_response(room_list, error_message)
-
+               if error_message:
+                  print(error_message)
+               else:
+                  print("ルーム一覧の取得に成功しました。")
             elif operation == 2 and type == "JOIN":
                # ルームへ追加。成功すればトークンが返ってくる。
                token, error_message = self.chat_server.join_room(parsed_request, client_address)
                # レスポンスの作成
                response = TCPProtocolHandler.make_token_response(token, error_message)
-
+               if error_message:
+                  print(error_message)
+               else:
+                  print("ルームの参加に成功しました。")
             # レスポンスの送信(共通のため最後処理する)
-            connection.send(response)
+            connection.sendall(response)
+            print("レスポンスを送信しました。")
       except OSError as e:
          print(e)
       except KeyboardInterrupt as e:
          print(e)
       finally:
          connection.close()
+
+   # 役割：クライアントからのリクエストデータの取得
+   # 戻り値：リクエストデータ
+   def recieve_request(self, connection):
+      try:
+         recieved_header_data = b""
+         while len(recieved_header_data) < 32:
+            chunk = connection.recv(32 - len(recieved_header_data))
+            if not chunk:
+               return ""
+            recieved_header_data += chunk
+
+         room_name_size = recieved_header_data[0]
+         operation_payload_size = int.from_bytes(recieved_header_data[3:], "big")
+         total_body_size = room_name_size + operation_payload_size
+         
+         recieved_body_data = b""
+         while len(recieved_body_data) < total_body_size:
+            chunk = connection.recv(total_body_size - len(recieved_body_data))
+            recieved_body_data += chunk
+         
+         request = recieved_header_data + recieved_body_data
+         return request
+      except socket.timeout as e:
+         print(e)
+      except socket.error as e:
+         print(e)
+
 
 # UDP通信でのデータの送受信
 class UDPServer:
@@ -159,7 +201,7 @@ class UDPServer:
       try:
          parsed_message = UDPProtocolHandler.parse_message(message)
          content = parsed_message["content"]
-         print(f"{parsed_message}を受信しました。")
+         print(f"{content['user_name']}から{content['type']}:{content['chat_data']}を受信しました。")
          
          # 通常のチャット時
          if content["type"] == "CHAT":
@@ -172,11 +214,11 @@ class UDPServer:
             # メッセージの作成
             message = UDPProtocolHandler.make_relay_message(content["user_name"], content["chat_data"])
             # アドレスリストの取得
-            address_list = self.chat_server.get_address_list(parsed_message)
-            if address_list is None:
+            members_list = self.chat_server.get_members_list(parsed_message["room_name"])
+            if members_list is None:
                return
             # メッセージのリレー
-            for address in address_list:
+            for _, address in members_list:
                if address != client_address:
                   self.sock.sendto(message, address)
                   # print(f"{message}を{address}に送信しました。")
@@ -257,7 +299,8 @@ class ChatServer:
       password = parsed_request["operation_payload"]["password"]
 
       if operation == 2 and type == "JOIN":
-         if self.rooms_info[room_name]["password"] != password:
+         is_valid = CryptoHandler.verify_password(password, self.rooms_info[room_name]["password"])
+         if not is_valid:
             return "パスワードに誤りがあります。"
       
       return None
@@ -337,15 +380,6 @@ class ChatServer:
       
       return True
 
-   # 役割：部屋名からルームメンバーのアドレスリストを取得
-   # 戻り値：アドレスリスト
-   def get_address_list(self, parsed_message):
-      address_list = []
-      for _, address in self.rooms_info[parsed_message["room_name"]]["members"].items():
-         address_list.append(address)
-
-      return address_list
-   
    # 役割：ルーム名からルームメンバー情報を取得
    # 戻り値：ルームメンバーのトークンとアドレスのタプルのリスト
    def get_members_list(self, room_name):
@@ -360,6 +394,17 @@ class ChatServer:
    # 戻り値：アドレス
    def get_client_room_name(self, token):
       return self.tokens_info[token]["room_name"]
+   
+   # 役割：クライアント全員のアドレスを取得
+   # 戻り値：クライアント全員のアドレス
+   def get_all_addresses(self):
+      all_addresses = []
+
+      for room_name, room_info in self.rooms_info.items():
+         for token, address in room_info["members"].items():
+            all_addresses.append(address)
+      
+      return all_addresses
 
    # 役割：ホストかどうか確認
    # 戻り値：真偽値
@@ -411,8 +456,8 @@ if __name__ == "__main__":
    is_system_active = threading.Event()
 
    server_ip = "0.0.0.0"
-   tcp_port = 6051
-   udp_port = 7011
+   tcp_port = 6058
+   udp_port = 7018
   
    try:
       chat_server = ChatServer()
@@ -433,3 +478,8 @@ if __name__ == "__main__":
       print(e)
    finally:
       is_system_active.set()
+
+      message = UDPProtocolHandler.make_system_stop_message()
+      all_addresses = chat_server.get_all_addresses()
+      for address in all_addresses:
+         udp_server.sock.sendto(message, address)

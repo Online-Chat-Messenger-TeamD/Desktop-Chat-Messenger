@@ -31,3 +31,16 @@ my-electron-app/
 | `index.html` | フロントエンドの UI |
 | `script.py` | Python スクリプト（Electron から実行するコード） |
 
+### pythonのテスト方法
+#### ライブラリのインストール
+```
+python3 -m venv my_env
+source my_env/bin/activate
+pip install -r requirements.txt
+```
+#### TCP接続（ルームの作成、ルーム一覧の取得、ルームの参加）
+以下のコマンドを実行することで、tcp_client_test_data.pyの標準出力がtcp_client.pyの標準入力に設定される。これを応用してElectrionからpythonを実行させたい。
+
+```
+python3 tcp_client_test_data.py | python3 tcp_client.py
+```

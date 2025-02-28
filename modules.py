@@ -1,4 +1,5 @@
 import json
+import bcrypt
 
 # TCPデータ
 # {
@@ -13,6 +14,24 @@ import json
 #     "room_list": room_list
 #   }
 # }
+
+class CryptoHandler:
+  @staticmethod
+  def encrypt_password(password):
+    encoded_password = password.encode("utf-8")
+    salt = bcrypt.gensalt()
+    hashed_password = bcrypt.hashpw(encoded_password, salt)
+    return hashed_password
+
+  @staticmethod
+  def verify_password(password, hashed_password):
+    encoded_password = password.encode("utf-8")
+    encoded_hashed_password = hashed_password.encode("utf-8")
+    if bcrypt.checkpw(encoded_password, encoded_hashed_password):
+      return True
+    else:
+      return False
+
 # TCPデータの作成、パース
 class TCPProtocolHandler:
   ROOM_NAME_MAX_BYTE_SIZE = 2**8 # room_nameの最大バイト数
@@ -69,7 +88,8 @@ class TCPProtocolHandler:
   # ルーム作成依頼リクエストの作成
   @staticmethod
   def make_create_room_request(room_name, password):
-    return TCPProtocolHandler.make_tcp_data(room_name=room_name, password=password, operation=1, state=0)
+    hashed_password = CryptoHandler.encrypt_password(password).decode("utf-8")
+    return TCPProtocolHandler.make_tcp_data(room_name=room_name, password=hashed_password, operation=1, state=0)
 
   # ルーム一覧取得依頼リクエストの作成
   @staticmethod
@@ -101,6 +121,7 @@ class TCPProtocolHandler:
       "room_name": room_name,
       "operation_payload": json.loads(operation_payload)
     }
+
 
 
 # UDPデータ
@@ -157,8 +178,8 @@ class UDPProtocolHandler:
   
   # 退出メッセージの作成(クライアント用)
   @staticmethod
-  def make_leave_message(room_name, token):
-    return UDPProtocolHandler.make_udp_data(type="LEAVE", room_name=room_name, token=token)
+  def make_leave_message(room_name, token, user_name):
+    return UDPProtocolHandler.make_udp_data(type="LEAVE", room_name=room_name, token=token, user_name=user_name)
   
   # リレーするチャットメッセージの作成(クライアント用)
   @staticmethod
@@ -178,7 +199,7 @@ class UDPProtocolHandler:
   # システム停止メッセージの作成(サーバー用)
   @staticmethod
   def make_system_stop_message():
-    return UDPProtocolHandler.make_udp_data(type="STOP", chat_data="システムメンテナンス中です。")
+    return UDPProtocolHandler.make_udp_data(type="STOP", chat_data="システムメンテナンス中のためシステムが終了しました。")
     
   # メッセージの解析 
   @staticmethod
